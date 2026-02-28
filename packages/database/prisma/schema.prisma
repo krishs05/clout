@@ -1,0 +1,194 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(uuid())
+  discordId   String   @unique
+  username    String
+  avatar      String?
+  goodDeeds   Int      @default(0)
+  badDeeds    Int      @default(0)
+  balance     Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  lastDailyAt DateTime?
+
+  // Relations
+  transactions  Transaction[]
+  chatHistory   ChatHistory[]
+  customCommands CustomCommand[] @relation("CreatedCommands")
+  servers       ServerMember[]
+
+  @@index([discordId])
+  @@index([balance])
+  @@map("users")
+}
+
+model Server {
+  id        String   @id @default(uuid())
+  discordId String   @unique
+  name      String
+  icon      String?
+  ownerId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  settings       ServerSettings?
+  embedConfig    EmbedConfig?
+  customCommands CustomCommand[]
+  members        ServerMember[]
+
+  @@index([discordId])
+  @@map("servers")
+}
+
+model ServerMember {
+  id       String @id @default(uuid())
+  serverId String
+  userId   String
+  joinedAt DateTime @default(now())
+
+  // Relations
+  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([serverId, userId])
+  @@index([serverId])
+  @@index([userId])
+  @@map("server_members")
+}
+
+model ServerSettings {
+  id                   String   @id @default(uuid())
+  serverId             String   @unique
+  economyEnabled       Boolean  @default(true)
+  dailyReward          Int      @default(100)
+  gamesEnabled         Boolean  @default(true)
+  musicEnabled         Boolean  @default(true)
+  aiChatEnabled        Boolean  @default(true)
+  aiPersonality        String   @default("balanced")
+  customCommandsEnabled Boolean @default(true)
+  prefix               String   @default("!")
+  updatedAt            DateTime @updatedAt
+
+  // Relations
+  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@map("server_settings")
+}
+
+model EmbedConfig {
+  id               String   @id @default(uuid())
+  serverId         String   @unique
+  color            String   @default("#5865F2")
+  title            String   @default("{username}'s Profile")
+  description      String   @default("Good deeds: {goodDeeds} | Bad deeds: {badDeeds}")
+  thumbnail        String?
+  image            String?
+  footer           String   @default("Clout Bot")
+  showDeedsRatio   Boolean  @default(true)
+  showBalance      Boolean  @default(true)
+  updatedAt        DateTime @updatedAt
+
+  // Relations
+  server   Server        @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  fields   EmbedField[]
+
+  @@map("embed_configs")
+}
+
+model EmbedField {
+  id            String   @id @default(uuid())
+  embedConfigId String
+  name          String
+  value         String
+  inline        Boolean  @default(false)
+  order         Int      @default(0)
+
+  // Relations
+  embedConfig EmbedConfig @relation(fields: [embedConfigId], references: [id], onDelete: Cascade)
+
+  @@index([embedConfigId])
+  @@map("embed_fields")
+}
+
+model CustomCommand {
+  id          String   @id @default(uuid())
+  serverId    String
+  name        String
+  description String   @default("Custom command")
+  response    String
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  server  Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  creator User   @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@unique([serverId, name])
+  @@index([serverId])
+  @@map("custom_commands")
+}
+
+model Transaction {
+  id          String   @id @default(uuid())
+  userId      String
+  type        TransactionType
+  amount      Int
+  reason      String
+  fromUserId  String?
+  toUserId    String?
+  serverId    String?
+  createdAt   DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+  @@map("transactions")
+}
+
+enum TransactionType {
+  DAILY
+  TRANSFER_IN
+  TRANSFER_OUT
+  GAME_WIN
+  GAME_LOSS
+  SHOP_PURCHASE
+  ADMIN_GRANT
+  ADMIN_DEDUCT
+}
+
+model ChatHistory {
+  id        String   @id @default(uuid())
+  userId    String
+  role      String
+  content   String
+  timestamp DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([timestamp])
+  @@map("chat_history")
+}
+
+model BotState {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@map("bot_state")
+}
