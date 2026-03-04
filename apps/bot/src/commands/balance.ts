@@ -1,5 +1,6 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
 import { prisma } from '@clout/database';
+import { createEmbed } from '../utils/embed';
 
 export const data = new SlashCommandBuilder()
   .setName('balance')
@@ -13,7 +14,7 @@ export const data = new SlashCommandBuilder()
 
 export async function execute(interaction: ChatInputCommandInteraction) {
   const targetUser = interaction.options.getUser('user') || interaction.user;
-  
+
   await interaction.deferReply();
 
   try {
@@ -46,10 +47,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     });
     const rank = higherBalance + 1;
 
-    const embed = new EmbedBuilder()
+    const embed = createEmbed()
       .setColor('#FFD700')
       .setTitle('💰 Balance')
-      .setDescription(targetUser.id === interaction.user.id 
+      .setDescription(targetUser.id === interaction.user.id
         ? `You have **${user.balance.toLocaleString()}** coins`
         : `**${targetUser.username}** has **${user.balance.toLocaleString()}** coins`
       )
@@ -57,15 +58,14 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         { name: '🏆 Rank', value: `#${rank}`, inline: true },
         { name: '📊 Total Earned', value: 'Coming soon...', inline: true }
       )
-      .setThumbnail(targetUser.displayAvatarURL())
-      .setTimestamp();
+      .setThumbnail(targetUser.displayAvatarURL());
 
     await interaction.editReply({ embeds: [embed] });
 
   } catch (error) {
     console.error('Error checking balance:', error);
-    await interaction.editReply({ 
-      content: '❌ Failed to check balance. Please try again.' 
+    await interaction.editReply({
+      content: '❌ Failed to check balance. Please try again.'
     });
   }
 }

@@ -1,5 +1,6 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
 import { prisma } from '@clout/database';
+import { createEmbed } from '../utils/embed';
 
 export const data = new SlashCommandBuilder()
   .setName('leaderboard')
@@ -32,21 +33,20 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     });
 
     const medals = ['🥇', '🥈', '🥉'];
-    
+
     const description = topUsers.map((user, index) => {
       const medal = medals[index] || `\`${(index + 1).toString().padStart(2, '0')}\``;
       return `${medal} **${user.username}** — ${user.balance.toLocaleString()} coins`;
     }).join('\n');
 
-    const embed = new EmbedBuilder()
+    const embed = createEmbed()
       .setColor('#FFD700')
       .setTitle('🏆 Clout Leaderboard')
-      .setDescription(description)
-      .setTimestamp();
+      .setDescription(description);
 
     if (userRank) {
-      embed.setFooter({ 
-        text: `Your rank: #${userRank.rank} with ${userRank.balance.toLocaleString()} coins` 
+      embed.setFooter({
+        text: `Your rank: #${userRank.rank} with ${userRank.balance.toLocaleString()} coins`
       });
     }
 
@@ -54,8 +54,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
   } catch (error) {
     console.error('Error fetching leaderboard:', error);
-    await interaction.editReply({ 
-      content: '❌ Failed to load leaderboard. Please try again.' 
+    await interaction.editReply({
+      content: '❌ Failed to load leaderboard. Please try again.'
     });
   }
 }

@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Response } from 'express';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { prisma } from '@clout/database';
@@ -16,6 +16,14 @@ const serverSettingsSchema = z.object({
   aiPersonality: z.enum(['balanced', 'roast', 'compliment']).optional(),
   customCommandsEnabled: z.boolean().optional(),
   prefix: z.string().max(5).optional(),
+  welcomeChannelId: z.string().nullable().optional(),
+  welcomeMessage: z.string().max(2000).nullable().optional(),
+  leaveChannelId: z.string().nullable().optional(),
+  leaveMessage: z.string().max(2000).nullable().optional(),
+  antiSpamEnabled: z.boolean().optional(),
+  antiLinkEnabled: z.boolean().optional(),
+  antiInvitesEnabled: z.boolean().optional(),
+  modLogChannelId: z.string().nullable().optional(),
 });
 
 const embedConfigSchema = z.object({
@@ -36,7 +44,7 @@ const customCommandSchema = z.object({
 });
 
 // Get user's servers
-router.get('/', authenticate, asyncHandler(async (req: AuthRequest, res) => {
+router.get('/', authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
   const userId = req.user!.id;
 
   // Get servers where user is a member
@@ -62,7 +70,7 @@ router.get('/', authenticate, asyncHandler(async (req: AuthRequest, res) => {
 }));
 
 // Get server details
-router.get('/:id', authenticate, asyncHandler(async (req: AuthRequest, res) => {
+router.get('/:id', authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
 
   const server = await prisma.server.findUnique({
@@ -89,7 +97,7 @@ router.get('/:id', authenticate, asyncHandler(async (req: AuthRequest, res) => {
 }));
 
 // Update server settings
-router.patch('/:id/settings', authenticate, asyncHandler(async (req: AuthRequest, res) => {
+router.patch('/:id/settings', authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   const validated = serverSettingsSchema.parse(req.body);
 
@@ -118,7 +126,7 @@ router.patch('/:id/settings', authenticate, asyncHandler(async (req: AuthRequest
 }));
 
 // Get embed config
-router.get('/:id/embed', authenticate, asyncHandler(async (req: AuthRequest, res) => {
+router.get('/:id/embed', authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
 
   const server = await prisma.server.findUnique({
@@ -151,7 +159,7 @@ router.get('/:id/embed', authenticate, asyncHandler(async (req: AuthRequest, res
 }));
 
 // Update embed config
-router.patch('/:id/embed', authenticate, asyncHandler(async (req: AuthRequest, res) => {
+router.patch('/:id/embed', authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   const validated = embedConfigSchema.parse(req.body);
 
@@ -192,7 +200,7 @@ router.patch('/:id/embed', authenticate, asyncHandler(async (req: AuthRequest, r
 }));
 
 // Get custom commands
-router.get('/:id/commands', authenticate, asyncHandler(async (req: AuthRequest, res) => {
+router.get('/:id/commands', authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
 
   const server = await prisma.server.findUnique({
@@ -215,7 +223,7 @@ router.get('/:id/commands', authenticate, asyncHandler(async (req: AuthRequest, 
 }));
 
 // Create custom command
-router.post('/:id/commands', authenticate, asyncHandler(async (req: AuthRequest, res) => {
+router.post('/:id/commands', authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   const validated = customCommandSchema.parse(req.body);
 
@@ -267,7 +275,7 @@ router.post('/:id/commands', authenticate, asyncHandler(async (req: AuthRequest,
 }));
 
 // Delete custom command
-router.delete('/:id/commands/:commandId', authenticate, asyncHandler(async (req: AuthRequest, res) => {
+router.delete('/:id/commands/:commandId', authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
   const { id, commandId } = req.params;
 
   const server = await prisma.server.findUnique({
@@ -289,7 +297,7 @@ router.delete('/:id/commands/:commandId', authenticate, asyncHandler(async (req:
 }));
 
 // Get economy settings
-router.get('/:id/economy', authenticate, asyncHandler(async (req: AuthRequest, res) => {
+router.get('/:id/economy', authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
 
   const server = await prisma.server.findUnique({
@@ -311,7 +319,7 @@ router.get('/:id/economy', authenticate, asyncHandler(async (req: AuthRequest, r
 }));
 
 // Get leaderboard
-router.get('/:id/leaderboard', asyncHandler(async (req, res) => {
+router.get('/:id/leaderboard', asyncHandler(async (req: any, res: Response) => {
   const { id } = req.params;
 
   const topUsers = await prisma.user.findMany({

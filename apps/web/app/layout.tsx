@@ -13,16 +13,18 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Clout - Advanced Discord Bot",
-  description: "The most powerful Discord bot for moderation, music, and server management",
-  keywords: ["discord", "bot", "moderation", "music", "server management"],
-  authors: [{ name: "Clout Team" }],
+  title: "Clout - Premium Discord Bot",
+  description: "A self-hosted Discord bot featuring karma tracking, economy systems, and a beautiful web dashboard. Built for communities that value quality.",
+  keywords: ["discord", "bot", "self-hosted", "karma", "economy", "dashboard", "community"],
+  authors: [{ name: "Clout" }],
   openGraph: {
-    title: "Clout - Advanced Discord Bot",
-    description: "The most powerful Discord bot for moderation, music, and server management",
+    title: "Clout - Premium Discord Bot",
+    description: "A self-hosted Discord bot featuring karma tracking, economy systems, and a beautiful web dashboard.",
     type: "website",
   },
 };
+
+import { ThemeProvider } from "@/components/theme-provider";
 
 export default function RootLayout({
   children,
@@ -30,11 +32,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#0a0a0f] text-white`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -1,18 +1,16 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
+import { createEmbed } from '../utils/embed';
 
 export const data = new SlashCommandBuilder()
   .setName('help')
   .setDescription('View all available commands');
 
 export async function execute(interaction: ChatInputCommandInteraction) {
-  const embed = new EmbedBuilder()
-    .setColor('#5865F2')
-    .setTitle('🎯 Clout Bot - Commands')
-    .setDescription('Track your deeds, earn coins, and climb the leaderboard!')
+  const embed = createEmbed('🎯 Clout Bot - Commands', 'Track your deeds, earn coins, and climb the leaderboard!')
     .addFields(
       {
         name: '📊 Deeds',
-        value: 
+        value:
           '`/good <deed>` - Record a good deed\n' +
           '`/bad <deed>` - Record a bad deed\n' +
           '`/profile [@user]` - View your Clout profile',
@@ -43,9 +41,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           '`/command list` - View custom commands',
         inline: false
       }
-    )
-    .setFooter({ text: 'Clout Bot - Your karma, your currency' })
-    .setTimestamp();
+    );
 
   await interaction.reply({ embeds: [embed], ephemeral: true });
 }

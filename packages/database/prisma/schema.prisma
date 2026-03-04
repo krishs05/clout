@@ -76,6 +76,14 @@ model ServerSettings {
   aiPersonality        String   @default("balanced")
   customCommandsEnabled Boolean @default(true)
   prefix               String   @default("!")
+  welcomeChannelId     String?
+  welcomeMessage       String?
+  leaveChannelId       String?
+  leaveMessage         String?
+  antiSpamEnabled      Boolean  @default(false)
+  antiLinkEnabled      Boolean  @default(false)
+  antiInvitesEnabled   Boolean  @default(false)
+  modLogChannelId      String?
   updatedAt            DateTime @updatedAt
 
   // Relations
@@ -131,7 +139,7 @@ model CustomCommand {
 
   // Relations
   server  Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
-  creator User   @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  creator User   @relation("CreatedCommands", fields: [createdBy], references: [id], onDelete: Cascade)
 
   @@unique([serverId, name])
   @@index([serverId])

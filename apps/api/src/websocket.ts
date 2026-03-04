@@ -1,12 +1,16 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import { prisma } from '@clout/database';
+import { botState } from './routes/bot';
 
 interface ExtendedWebSocket extends WebSocket {
   isAlive: boolean;
   userId?: string;
 }
 
+let wssInstance: WebSocketServer | null = null;
+
 export function setupWebSocket(wss: WebSocketServer) {
+  wssInstance = wss;
   // Heartbeat to keep connections alive
   const heartbeat = (ws: ExtendedWebSocket) => {
     ws.isAlive = true;
@@ -32,15 +36,7 @@ export function setupWebSocket(wss: WebSocketServer) {
             // Subscribe to bot status updates
             ws.send(JSON.stringify({
               type: 'bot_status',
-              data: {
-                online: true,
-                uptime: Date.now(),
-                guilds: 5,
-                users: 1250,
-                commands: 12,
-                websocketPing: 45,
-                memoryUsage: 128,
-              },
+              data: botState,
             }));
             break;
 
@@ -94,4 +90,19 @@ async function getStats() {
     servers: totalServers,
     transactions: totalTransactions,
   };
+}
+
+export function broadcastBotStatus(status: any) {
+  if (!wssInstance) return;
+
+  const message = JSON.stringify({
+    type: 'bot_status',
+    data: status,
+  });
+
+  wssInstance.clients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(message);
+    }
+  });
 }

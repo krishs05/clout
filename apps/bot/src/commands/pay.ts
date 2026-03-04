@@ -1,5 +1,6 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
 import { prisma } from '@clout/database';
+import { createEmbed } from '../utils/embed';
 
 export const data = new SlashCommandBuilder()
   .setName('pay')
@@ -21,7 +22,7 @@ export const data = new SlashCommandBuilder()
 export async function execute(interaction: ChatInputCommandInteraction) {
   const recipient = interaction.options.getUser('user', true);
   const amount = interaction.options.getInteger('amount', true);
-  
+
   await interaction.deferReply();
 
   // Prevent paying yourself
@@ -105,7 +106,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       }),
     ]);
 
-    const embed = new EmbedBuilder()
+    const embed = createEmbed()
       .setColor('#00FF00')
       .setTitle('💸 Payment Sent!')
       .setDescription(`You sent **${amount.toLocaleString()}** coins to **${recipient.username}**`)
@@ -113,15 +114,14 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         { name: 'Your New Balance', value: `${updatedSender.balance.toLocaleString()} coins`, inline: true },
         { name: `${recipient.username}'s Balance`, value: `${updatedRecipient.balance.toLocaleString()} coins`, inline: true }
       )
-      .setThumbnail(recipient.displayAvatarURL())
-      .setTimestamp();
+      .setThumbnail(recipient.displayAvatarURL());
 
     await interaction.editReply({ embeds: [embed] });
 
   } catch (error) {
     console.error('Error processing payment:', error);
-    await interaction.editReply({ 
-      content: '❌ Failed to process payment. Please try again.' 
+    await interaction.editReply({
+      content: '❌ Failed to process payment. Please try again.'
     });
   }
 }

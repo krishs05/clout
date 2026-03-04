@@ -1,4 +1,5 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
+import { createEmbed } from '../utils/embed';
 
 const triviaQuestions = [
   {
@@ -62,16 +63,15 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
   // Select random question
   const question = triviaQuestions[Math.floor(Math.random() * triviaQuestions.length)];
-  
+
   // Create options text
   const optionsText = question.options.map((opt, i) => `${String.fromCharCode(65 + i)}) ${opt}`).join('\n');
 
-  const embed = new EmbedBuilder()
+  const embed = createEmbed()
     .setColor('#9B59B6')
     .setTitle('🧠 Trivia Time!')
     .setDescription(`${question.question}\n\n${optionsText}\n\n*Reply with A, B, C, or D within 30 seconds!*`)
-    .setFooter({ text: 'Win 50 coins for correct answer!' })
-    .setTimestamp();
+    .setFooter({ text: 'Win 50 coins for correct answer!' });
 
   await interaction.editReply({ embeds: [embed] });
 
@@ -82,7 +82,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   };
 
   try {
-    const collected = await interaction.channel?.awaitMessages({
+    const collected = await (interaction.channel as any)?.awaitMessages({
       filter,
       max: 1,
       time: 30000,
@@ -100,7 +100,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       const { prisma } = await import('@clout/database');
       const user = await prisma.user.upsert({
         where: { discordId: interaction.user.id },
-        update: { 
+        update: {
           balance: { increment: 50 },
           username: interaction.user.username,
         },

@@ -1,5 +1,6 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
 import { prisma } from '@clout/database';
+import { createEmbed } from '../utils/embed';
 
 export const data = new SlashCommandBuilder()
   .setName('guess')
@@ -16,16 +17,16 @@ export const data = new SlashCommandBuilder()
 export async function execute(interaction: ChatInputCommandInteraction) {
   const guess = interaction.options.getInteger('number', true);
   const secretNumber = Math.floor(Math.random() * 10) + 1;
-  
+
   await interaction.deferReply();
 
   const isCorrect = guess === secretNumber;
   const reward = 100;
   const closeReward = 20;
-  
+
   // Check if close (within 1)
   const isClose = Math.abs(guess - secretNumber) === 1;
-  
+
   let balanceChange = 0;
   let resultText = '';
 
@@ -43,7 +44,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   // Update database
   const user = await prisma.user.upsert({
     where: { discordId: interaction.user.id },
-    update: { 
+    update: {
       balance: { increment: balanceChange },
       username: interaction.user.username,
     },
@@ -68,7 +69,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
   const embedColor = isCorrect ? 0x00FF00 : isClose ? 0xFFA500 : 0xFF0000;
 
-  const embed = new EmbedBuilder()
+  const embed = createEmbed()
     .setColor(embedColor)
     .setTitle('🎲 Guess the Number')
     .setDescription(resultText)
@@ -76,8 +77,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       { name: 'Your Guess', value: guess.toString(), inline: true },
       { name: 'Secret Number', value: secretNumber.toString(), inline: true },
       { name: 'Balance', value: `${user.balance.toLocaleString()} coins`, inline: false }
-    )
-    .setTimestamp();
+    );
 
   await interaction.editReply({ embeds: [embed] });
 }

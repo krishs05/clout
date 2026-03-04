@@ -1,5 +1,6 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder, User } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
 import { prisma } from '@clout/database';
+import { createEmbed } from '../utils/embed';
 
 export const data = new SlashCommandBuilder()
   .setName('profile')
@@ -13,7 +14,7 @@ export const data = new SlashCommandBuilder()
 
 export async function execute(interaction: ChatInputCommandInteraction) {
   const targetUser = interaction.options.getUser('user') || interaction.user;
-  
+
   await interaction.deferReply();
 
   try {
@@ -38,7 +39,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     // Calculate stats
     const totalDeeds = user.goodDeeds + user.badDeeds;
-    const karmaRatio = totalDeeds > 0 
+    const karmaRatio = totalDeeds > 0
       ? ((user.goodDeeds / totalDeeds) * 100).toFixed(1)
       : '50.0';
 
@@ -76,37 +77,34 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     });
     const rank = higherBalance + 1;
 
-    const embed = new EmbedBuilder()
+    const embed = createEmbed(`${cloutEmoji} ${targetUser.username}'s Clout Profile`)
       .setColor(cloutColor)
-      .setTitle(`${cloutEmoji} ${targetUser.username}'s Clout Profile`)
       .setDescription(`**Clout Level:** ${cloutLevel}`)
       .setThumbnail(targetUser.displayAvatarURL({ size: 256 }))
       .addFields(
-        { 
-          name: '📊 Karma', 
-          value: `${user.goodDeeds} good | ${user.badDeeds} bad\n${karmaRatio}% positive`, 
-          inline: true 
+        {
+          name: '📊 Karma',
+          value: `${user.goodDeeds} good | ${user.badDeeds} bad\n${karmaRatio}% positive`,
+          inline: true
         },
-        { 
-          name: '💰 Balance', 
-          value: `${user.balance.toLocaleString()} coins\nRank #${rank}`, 
-          inline: true 
+        {
+          name: '💰 Balance',
+          value: `${user.balance.toLocaleString()} coins\nRank #${rank}`,
+          inline: true
         },
-        { 
-          name: '📅 Joined', 
-          value: `<t:${Math.floor(user.createdAt.getTime() / 1000)}:R>`, 
-          inline: true 
+        {
+          name: '📅 Joined',
+          value: `<t:${Math.floor(user.createdAt.getTime() / 1000)}:R>`,
+          inline: true
         }
-      )
-      .setFooter({ text: 'Use /good and /bad to record deeds!' })
-      .setTimestamp();
+      );
 
     await interaction.editReply({ embeds: [embed] });
 
   } catch (error) {
     console.error('Error fetching profile:', error);
-    await interaction.editReply({ 
-      content: '❌ Failed to load profile. Please try again.' 
+    await interaction.editReply({
+      content: '❌ Failed to load profile. Please try again.'
     });
   }
 }

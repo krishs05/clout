@@ -1,5 +1,6 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
 import { prisma } from '@clout/database';
+import { createEmbed } from '../utils/embed';
 
 const choices = ['rock', 'paper', 'scissors'] as const;
 const emojis: Record<string, string> = {
@@ -26,12 +27,12 @@ export const data = new SlashCommandBuilder()
 export async function execute(interaction: ChatInputCommandInteraction) {
   const playerChoice = interaction.options.getString('choice', true);
   const botChoice = choices[Math.floor(Math.random() * choices.length)];
-  
+
   await interaction.deferReply();
 
   // Determine winner
   let result: 'win' | 'lose' | 'tie';
-  
+
   if (playerChoice === botChoice) {
     result = 'tie';
   } else if (
@@ -57,7 +58,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   // Update database
   const user = await prisma.user.upsert({
     where: { discordId: interaction.user.id },
-    update: { 
+    update: {
       balance: { increment: balanceChange },
       username: interaction.user.username,
     },
@@ -94,7 +95,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     tie: `🤝 It's a tie!`
   };
 
-  const embed = new EmbedBuilder()
+  const embed = createEmbed()
     .setColor(resultColors[result])
     .setTitle('🎮 Rock Paper Scissors')
     .addFields(
@@ -102,8 +103,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       { name: 'Bot', value: `${emojis[botChoice]} ${botChoice.charAt(0).toUpperCase() + botChoice.slice(1)}`, inline: true },
       { name: 'Result', value: resultTexts[result], inline: false },
       { name: 'Balance', value: `${user.balance.toLocaleString()} coins`, inline: false }
-    )
-    .setTimestamp();
+    );
 
   await interaction.editReply({ embeds: [embed] });
 }

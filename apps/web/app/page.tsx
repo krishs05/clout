@@ -1,527 +1,429 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
-import { Float, Stars, PerspectiveCamera } from "@react-three/drei";
-import * as THREE from "three";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { 
-  Shield, 
-  Music, 
-  Settings, 
-  Zap, 
-  Users, 
+import { useEffect, useRef, Suspense } from "react";
+import { motion, useScroll, useTransform } from "framer-motion";
+import {
+  Shield,
+  Music,
+  Settings,
+  Zap,
+  Users,
   BarChart3,
-  ChevronDown,
+  Crown,
+  ArrowRight,
+  Check,
   Sparkles
 } from "lucide-react";
 import Link from "next/link";
+import { Logo3D, LogoIcon } from "@/components/logo-3d";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { SelfHostedExpandableSection } from "@/components/self-hosted-expandable-section";
+import { Toaster } from "@/components/ui/sonner";
+import { FlickeringGrid } from "@/components/magicui/flickering-grid";
+import { SparklesText } from "@/components/magicui/sparkles-text";
+import { MagicCard } from "@/components/magicui/magic-card";
+import { BorderBeam } from "@/components/magicui/border-beam";
+import { InteractiveHoverButton } from "@/components/magicui/interactive-hover-button";
+import { ShimmerButton } from "@/components/magicui/shimmer-button";
 
-gsap.registerPlugin(ScrollTrigger);
+// Feature data - clean solid colors
+const features = [
+  {
+    icon: Crown,
+    title: "Karma & Reputation",
+    description: "Track good and bad deeds within your community. Build a positive culture with visible reputation scores.",
+    color: "bg-indigo-500/10",
+    iconColor: "text-indigo-400"
+  },
+  {
+    icon: Zap,
+    title: "Economy System",
+    description: "Full-featured virtual currency with daily rewards, transfers, games, and server-specific shops.",
+    color: "bg-amber-500/10",
+    iconColor: "text-amber-400"
+  },
+  {
+    icon: Shield,
+    title: "Server Management",
+    description: "Powerful moderation tools, custom commands, and automated actions to keep your community safe.",
+    color: "bg-emerald-500/10",
+    iconColor: "text-emerald-400"
+  },
+  {
+    icon: Music,
+    title: "Music & Fun",
+    description: "High-quality music streaming from multiple sources plus trivia, games, and interactive commands.",
+    color: "bg-pink-500/10",
+    iconColor: "text-pink-400"
+  },
+  {
+    icon: BarChart3,
+    title: "Rich Dashboard",
+    description: "Beautiful web interface to configure your bot, view analytics, and manage settings with ease.",
+    color: "bg-sky-500/10",
+    iconColor: "text-sky-400"
+  },
+  {
+    icon: Settings,
+    title: "Deep Customization",
+    description: "Custom embeds, commands, and configurations tailored to your community's unique needs.",
+    color: "bg-violet-500/10",
+    iconColor: "text-violet-400"
+  }
+];
 
-// Floating geometric shapes
-function FloatingShape({ 
-  position, 
-  rotation, 
-  scale, 
-  color,
-  geometry = "box",
-  scrollProgress 
-}: { 
-  position: [number, number, number];
-  rotation: [number, number, number];
-  scale: number;
-  color: string;
-  geometry?: "box" | "sphere" | "torus" | "octahedron";
-  scrollProgress: React.MutableRefObject<number>;
-}) {
-  const meshRef = useRef<THREE.Mesh>(null);
-  const initialY = position[1];
-
-  useFrame((state) => {
-    if (meshRef.current) {
-      meshRef.current.rotation.x += 0.003;
-      meshRef.current.rotation.y += 0.005;
-      meshRef.current.position.y = initialY + Math.sin(state.clock.elapsedTime * 0.5) * 0.3 - scrollProgress.current * 2;
-    }
-  });
-
-  const GeometryComponent = {
-    box: <boxGeometry args={[1, 1, 1]} />,
-    sphere: <sphereGeometry args={[0.6, 32, 32]} />,
-    torus: <torusGeometry args={[0.5, 0.2, 16, 32]} />,
-    octahedron: <octahedronGeometry args={[0.6]} />,
-  }[geometry];
-
-  return (
-    <Float speed={2} rotationIntensity={1} floatIntensity={0.5}>
-      <mesh ref={meshRef} position={position} rotation={rotation} scale={scale}>
-        {GeometryComponent}
-        <meshStandardMaterial 
-          color={color} 
-          emissive={color}
-          emissiveIntensity={0.2}
-          roughness={0.3}
-          metalness={0.8}
-        />
-      </mesh>
-    </Float>
-  );
-}
-
-// Central logo shape
-function LogoShape({ scrollProgress }: { scrollProgress: React.MutableRefObject<number> }) {
-  const groupRef = useRef<THREE.Group>(null);
-
-  useFrame((state) => {
-    if (groupRef.current) {
-      groupRef.current.rotation.y = state.clock.elapsedTime * 0.2;
-      groupRef.current.rotation.x = Math.sin(state.clock.elapsedTime * 0.3) * 0.1;
-      groupRef.current.position.y = -scrollProgress.current * 3;
-      const scale = Math.max(0.5, 1 - scrollProgress.current * 0.5);
-      groupRef.current.scale.setScalar(scale);
-    }
-  });
-
-  return (
-    <group ref={groupRef}>
-      {/* Outer ring */}
-      <mesh>
-        <torusGeometry args={[2, 0.05, 16, 100]} />
-        <meshStandardMaterial color="#6366f1" emissive="#6366f1" emissiveIntensity={0.5} />
-      </mesh>
-      
-      {/* Middle ring */}
-      <mesh rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[1.5, 0.03, 16, 100]} />
-        <meshStandardMaterial color="#8b5cf6" emissive="#8b5cf6" emissiveIntensity={0.5} />
-      </mesh>
-      
-      {/* Inner octahedron */}
-      <mesh>
-        <octahedronGeometry args={[0.8]} />
-        <meshStandardMaterial 
-          color="#ec4899" 
-          emissive="#ec4899" 
-          emissiveIntensity={0.3}
-          roughness={0.2}
-          metalness={0.9}
-        />
-      </mesh>
-      
-      {/* Floating particles around logo */}
-      {Array.from({ length: 8 }).map((_, i) => {
-        const angle = (i / 8) * Math.PI * 2;
-        const radius = 2.5;
-        return (
-          <mesh 
-            key={i}
-            position={[Math.cos(angle) * radius, Math.sin(angle) * radius * 0.5, Math.sin(angle) * radius]}
-          >
-            <sphereGeometry args={[0.08, 16, 16]} />
-            <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={1} />
-          </mesh>
-        );
-      })}
-    </group>
-  );
-}
-
-// Scene component
-function Scene({ scrollProgress }: { scrollProgress: React.MutableRefObject<number> }) {
-  return (
-    <>
-      <PerspectiveCamera makeDefault position={[0, 0, 8]} />
-      <ambientLight intensity={0.3} />
-      <directionalLight position={[10, 10, 5]} intensity={1} />
-      <pointLight position={[-10, -10, -10]} color="#6366f1" intensity={0.5} />
-      <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
-      
-      <LogoShape scrollProgress={scrollProgress} />
-      
-      <FloatingShape 
-        position={[-4, 2, -2]} 
-        rotation={[0.5, 0.5, 0]} 
-        scale={0.8} 
-        color="#6366f1"
-        geometry="box"
-        scrollProgress={scrollProgress}
-      />
-      <FloatingShape 
-        position={[4, -1, -3]} 
-        rotation={[0.3, 0.8, 0]} 
-        scale={0.6} 
-        color="#8b5cf6"
-        geometry="sphere"
-        scrollProgress={scrollProgress}
-      />
-      
-      <FloatingShape 
-        position={[-3, -2, -1]} 
-        rotation={[0.6, 0.2, 0.4]} 
-        scale={0.7} 
-        color="#ec4899"
-        geometry="torus"
-        scrollProgress={scrollProgress}
-      />
-      
-      <FloatingShape 
-        position={[3.5, 2.5, -2]} 
-        rotation={[0.4, 0.6, 0.2]} 
-        scale={0.5} 
-        color="#10b981"
-        geometry="octahedron"
-        scrollProgress={scrollProgress}
-      />
-    </>
-  );
-}
-
-// Feature card component
-function FeatureCard({ 
-  icon: Icon, 
-  title, 
-  description, 
-  delay 
-}: { 
-  icon: React.ElementType;
-  title: string;
-  description: string;
-  delay: number;
-}) {
-  const cardRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (cardRef.current) {
-      gsap.fromTo(
-        cardRef.current,
-        { opacity: 0, y: 50 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: 0.8,
-          delay,
-          scrollTrigger: {
-            trigger: cardRef.current,
-            start: "top 85%",
-            toggleActions: "play none none reverse",
-          },
-        }
-      );
-    }
-  }, [delay]);
-
-  return (
-    <div
-      ref={cardRef}
-      className="glass rounded-2xl p-8 hover:bg-white/10 transition-all duration-500 group cursor-pointer"
-    >
-      <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-        <Icon className="w-7 h-7 text-white" />
-      </div>
-      <h3 className="text-xl font-semibold mb-3 text-white">{title}</h3>
-      <p className="text-slate-400 leading-relaxed">{description}</p>
-    </div>
-  );
-}
-
-// Stats section
-function StatsSection() {
-  const statsRef = useRef<HTMLDivElement>(null);
-  const [counts, setCounts] = useState([0, 0, 0, 0]);
-  const targets = [50000, 10000, 99.9, 24];
-  const labels = ["Servers", "Users", "Uptime %", "/7 Support"];
-
-  useEffect(() => {
-    if (statsRef.current) {
-      ScrollTrigger.create({
-        trigger: statsRef.current,
-        start: "top 80%",
-        onEnter: () => {
-          targets.forEach((target, index) => {
-            gsap.to({}, {
-              duration: 2,
-              ease: "power2.out",
-              onUpdate: function() {
-                const progress = this.progress();
-                setCounts(prev => {
-                  const newCounts = [...prev];
-                  if (index === 2) {
-                    newCounts[index] = Math.round(target * progress * 10) / 10;
-                  } else {
-                    newCounts[index] = Math.round(target * progress);
-                  }
-                  return newCounts;
-                });
-              }
-            });
-          });
-        },
-        once: true
-      });
-    }
-  }, []);
-
-  return (
-    <div ref={statsRef} className="grid grid-cols-2 md:grid-cols-4 gap-8 py-20">
-      {counts.map((count, index) => (
-        <div key={index} className="text-center">
-          <div className="text-4xl md:text-5xl font-bold gradient-text mb-2">
-            {index === 2 ? count.toFixed(1) : count.toLocaleString()}
-            {index === 2 ? "%" : index === 3 ? "h" : "+"}
-          </div>
-          <div className="text-slate-400">{labels[index]}</div>
-        </div>
-      ))}
-    </div>
-  );
-}
+// Benefits
+const benefits = [
+  "Free forever with no paywalls",
+  "Self-hosted for full control",
+  "Real-time dashboard updates",
+  "Custom economy & karma system",
+  "12+ slash commands included",
+  "PostgreSQL database backend"
+];
 
 export default function Home() {
-  const scrollProgress = useRef(0);
-  const heroRef = useRef<HTMLDivElement>(null);
-  const featuresRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll();
 
-  useEffect(() => {
-    const handleScroll = () => {
-      const scrollY = window.scrollY;
-      const windowHeight = window.innerHeight;
-      scrollProgress.current = Math.min(scrollY / windowHeight, 1);
-    };
+  const opacity = useTransform(scrollYProgress, [0, 0.2], [1, 0]);
+  const scale = useTransform(scrollYProgress, [0, 0.2], [1, 0.95]);
 
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  useEffect(() => {
-    // Hero text animations
-    gsap.fromTo(
-      ".hero-title",
-      { opacity: 0, y: 50 },
-      { opacity: 1, y: 0, duration: 1, delay: 0.5, ease: "power3.out" }
-    );
-
-    gsap.fromTo(
-      ".hero-subtitle",
-      { opacity: 0, y: 30 },
-      { opacity: 1, y: 0, duration: 1, delay: 0.8, ease: "power3.out" }
-    );
-
-    gsap.fromTo(
-      ".hero-cta",
-      { opacity: 0, y: 30 },
-      { opacity: 1, y: 0, duration: 1, delay: 1.1, ease: "power3.out" }
-    );
-
-    // Parallax for sections
-    if (featuresRef.current) {
-      gsap.to(featuresRef.current, {
-        scrollTrigger: {
-          trigger: featuresRef.current,
-          start: "top bottom",
-          end: "bottom top",
-          scrub: 1,
-        },
-        y: -50,
-      });
-    }
-  }, []);
-
-  const features = [
-    {
-      icon: Shield,
-      title: "Advanced Moderation",
-      description: "Keep your server safe with auto-moderation, custom filters, and detailed logging."
-    },
-    {
-      icon: Music,
-      title: "Music Streaming",
-      description: "High-quality music playback from YouTube, Spotify, and SoundCloud with playlist support."
-    },
-    {
-      icon: Settings,
-      title: "Custom Commands",
-      description: "Create powerful custom commands with variables, conditions, and rich embeds."
-    },
-    {
-      icon: Zap,
-      title: "Lightning Fast",
-      description: "Optimized performance ensures commands execute instantly, even under heavy load."
-    },
-    {
-      icon: Users,
-      title: "User Management",
-      description: "Advanced user tracking, XP systems, levels, and customizable role rewards."
-    },
-    {
-      icon: BarChart3,
-      title: "Analytics",
-      description: "Detailed server insights with beautiful charts and actionable recommendations."
-    }
-  ];
-
-  const discordLoginUrl = `https://discord.com/api/oauth2/authorize?client_id=${process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID || "123456789"}&redirect_uri=${encodeURIComponent(process.env.NEXT_PUBLIC_DISCORD_REDIRECT_URI || "http://localhost:3000/auth/callback")}&response_type=code&scope=identify%20guilds`;
+  const discordLoginUrl = `https://discord.com/api/oauth2/authorize?client_id=${process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID || "123456789"}&redirect_uri=${encodeURIComponent(process.env.NEXT_PUBLIC_DISCORD_REDIRECT_URI || "http://localhost:3001/auth/callback")}&response_type=code&scope=identify%20guilds`;
 
   return (
-    <main className="relative min-h-screen bg-[#0a0a0f] overflow-x-hidden">
-      {/* 3D Canvas Background */}
-      <div className="fixed inset-0 z-0">
-        <Canvas
-          camera={{ position: [0, 0, 8], fov: 75 }}
-          gl={{ antialias: true, alpha: true }}
-          style={{ background: "transparent" }}
-        >
-          <Scene scrollProgress={scrollProgress} />
-        </Canvas>
+    <div ref={containerRef} className="relative min-h-screen bg-[#0a0a0b] overflow-x-hidden">
+      {/* Subtle grid pattern background */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <FlickeringGrid
+          className="absolute inset-0 z-0"
+          squareSize={6}
+          gridGap={8}
+          color="#9E7AFF"
+          maxOpacity={0.12}
+          flickerChance={0.05}
+        />
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-indigo-500/[0.03] rounded-full blur-[128px]" />
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-sky-500/[0.02] rounded-full blur-[128px]" />
       </div>
 
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 glass-strong">
+      <motion.nav
+        initial={{ y: -100, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+        className="fixed top-0 left-0 right-0 z-50 glass-strong"
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-white" />
+            <Link href="/" className="flex items-center gap-3 group">
+              <div className="w-9 h-9 transition-transform duration-300 group-hover:scale-110">
+                <LogoIcon className="w-full h-full" />
               </div>
-              <span className="text-xl font-bold gradient-text">Clout</span>
-            </div>
-            
-            <div className="hidden md:flex items-center gap-8">
-              <a href="#features" className="text-slate-300 hover:text-white transition-colors">Features</a>
-              <a href="#stats" className="text-slate-300 hover:text-white transition-colors">Stats</a>
-              <a href="#docs" className="text-slate-300 hover:text-white transition-colors">Docs</a>
+              <span className="text-xl font-semibold text-white">Clout</span>
+            </Link>
+
+            <div className="hidden md:flex items-center gap-1">
+              {[
+                { label: "Features", href: "#features" },
+                { label: "Benefits", href: "#benefits" },
+                { label: "GitHub", href: "https://github.com" },
+              ].map((item) => (
+                <a
+                  key={item.label}
+                  href={item.href}
+                  className="px-4 py-2 text-sm text-zinc-400 hover:text-zinc-200 transition-colors rounded-lg hover:bg-white/[0.03]"
+                >
+                  {item.label}
+                </a>
+              ))}
             </div>
 
-            <Link 
-              href={discordLoginUrl}
-              className="px-6 py-2.5 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-medium hover:opacity-90 transition-opacity flex items-center gap-2"
-            >
-              <Users className="w-4 h-4" />
-              Login with Discord
-            </Link>
+            <div className="flex items-center gap-3">
+              <Link href={discordLoginUrl}>
+                <Button
+                  variant="ghost"
+                  className="text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.03]"
+                >
+                  Sign In
+                </Button>
+              </Link>
+              <Link href={discordLoginUrl}>
+                <Button className="bg-indigo-600 hover:bg-indigo-500 text-white border-0 transition-all">
+                  <Users className="w-4 h-4 mr-2" />
+                  Get Started
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
-      </nav>
+      </motion.nav>
 
       {/* Hero Section */}
-      <section ref={heroRef} className="relative z-10 min-h-screen flex items-center justify-center pt-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="hero-title mb-6">
-            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-sm font-medium mb-6">
-              <Sparkles className="w-4 h-4" />
-              v2.0 Now Available
-            </span>
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold mb-6">
-              <span className="gradient-text text-glow">Clout</span>
-            </h1>
-          </div>
-          
-          <p className="hero-subtitle text-xl md:text-2xl text-slate-400 max-w-3xl mx-auto mb-10">
-            The most powerful Discord bot for moderation, music, and server management. 
-            Built for communities that demand excellence.
-          </p>
-          
-          <div className="hero-cta flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link 
-              href={discordLoginUrl}
-              className="px-8 py-4 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold text-lg hover:opacity-90 transition-all hover:scale-105 glow"
+      <section className="relative z-10 min-h-screen flex items-center pt-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            {/* Left Content */}
+            <motion.div
+              initial={{ opacity: 0, x: -40 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+              style={{ opacity, scale }}
+              className="text-center lg:text-left"
             >
-              Add to Discord
-            </Link>
-            <a 
-              href="#features"
-              className="px-8 py-4 rounded-full glass text-white font-semibold text-lg hover:bg-white/10 transition-all"
-            >
-              Learn More
-            </a>
-          </div>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2, duration: 0.8 }}
+              >
+                <Badge
+                  variant="secondary"
+                  className="mb-6 px-4 py-1.5 bg-indigo-500/10 text-indigo-300 border-indigo-500/20 hover:bg-indigo-500/15"
+                >
+                  <Sparkles className="w-3.5 h-3.5 mr-2" />
+                  Self-hosted Discord Bot
+                </Badge>
+              </motion.div>
 
-          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 animate-bounce">
-            <ChevronDown className="w-6 h-6 text-slate-500" />
+              <motion.h1
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3, duration: 0.8 }}
+                className="text-5xl md:text-6xl lg:text-7xl font-semibold tracking-tight mb-6"
+              >
+                <span className="text-white">Build</span>
+                <br />
+                <SparklesText className="text-5xl md:text-6xl lg:text-7xl" colors={{ first: "#818cf8", second: "#38bdf8" }} sparklesCount={5}>Community</SparklesText>
+                <span className="text-white">Clout</span>
+              </motion.h1>
+
+              <motion.p
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4, duration: 0.8 }}
+                className="text-lg text-zinc-400 max-w-lg mx-auto lg:mx-0 mb-8 leading-relaxed"
+              >
+                A premium, self-hosted Discord bot featuring karma tracking,
+                economy systems, and a beautiful web dashboard.
+                Built for communities that value quality.
+              </motion.p>
+
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5, duration: 0.8 }}
+                className="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start"
+              >
+                <Link href={discordLoginUrl}>
+                  <ShimmerButton className="shadow-2xl" background="#4f46e5" shimmerColor="#ffffff">
+                    <span className="flex items-center gap-2 whitespace-pre-wrap text-center text-sm font-medium leading-none tracking-tight text-white lg:text-base">
+                      <Crown className="w-5 h-5" /> Add to Discord
+                    </span>
+                  </ShimmerButton>
+                </Link>
+                <a href="#features">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="border-zinc-700 text-zinc-300 hover:bg-white/[0.03] hover:text-white px-8 h-12 text-base bg-transparent"
+                  >
+                    Explore Features
+                  </Button>
+                </a>
+              </motion.div>
+
+              {/* Benefits list */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.7, duration: 0.8 }}
+                className="mt-12 flex flex-wrap gap-4 justify-center lg:justify-start"
+              >
+                {benefits.slice(0, 3).map((benefit, i) => (
+                  <div key={i} className="flex items-center gap-2 text-sm text-zinc-500">
+                    <Check className="w-4 h-4 text-emerald-400" />
+                    <span>{benefit}</span>
+                  </div>
+                ))}
+              </motion.div>
+            </motion.div>
+
+            {/* Right - 3D Logo */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.3, duration: 1, ease: [0.16, 1, 0.3, 1] }}
+              className="relative h-[400px] md:h-[500px] lg:h-[600px]"
+            >
+              <Logo3D className="w-full h-full" />
+            </motion.div>
           </div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section 
-        id="features" 
-        ref={featuresRef}
-        className="relative z-10 py-32"
-      >
+      <section id="features" className="relative z-10 py-32">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-20">
-            <h2 className="text-4xl md:text-5xl font-bold mb-6">
-              Powerful <span className="gradient-text">Features</span>
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="text-center mb-20"
+          >
+            <Badge
+              variant="secondary"
+              className="mb-4 bg-violet-500/10 text-violet-300 border-violet-500/20"
+            >
+              Features
+            </Badge>
+            <h2 className="text-4xl md:text-5xl font-semibold text-white mb-4">
+              Everything you need
             </h2>
-            <p className="text-xl text-slate-400 max-w-2xl mx-auto">
-              Everything you need to manage and grow your Discord community
+            <p className="text-lg text-zinc-400 max-w-2xl mx-auto">
+              A complete suite of tools to engage, moderate, and grow your Discord community
             </p>
-          </div>
+          </motion.div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {features.map((feature, index) => (
-              <FeatureCard
+              <motion.div
                 key={feature.title}
-                icon={feature.icon}
-                title={feature.title}
-                description={feature.description}
-                delay={index * 0.1}
-              />
+                initial={{ opacity: 0, y: 40 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.1, duration: 0.6 }}
+                className="group h-full"
+              >
+                <MagicCard className="glass rounded-2xl p-8 h-full inner-glow flex items-start flex-col justify-start">
+                  <div className={`w-12 h-12 rounded-xl ${feature.color} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
+                    <feature.icon className={`w-6 h-6 ${feature.iconColor}`} />
+                  </div>
+                  <h3 className="text-xl font-semibold text-white mb-3">
+                    {feature.title}
+                  </h3>
+                  <p className="text-zinc-400 leading-relaxed text-sm">
+                    {feature.description}
+                  </p>
+                </MagicCard>
+              </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section id="stats" className="relative z-10 py-32 glass-strong">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <StatsSection />
+      {/* Benefits Section - Interactive Expandable */}
+      <Suspense fallback={
+        <div className="py-32">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="glass rounded-3xl p-8 md:p-12 lg:p-16 inner-glow h-96 flex items-center justify-center">
+              <div className="flex items-center gap-3 text-zinc-500">
+                <div className="w-5 h-5 border-2 border-indigo-500/30 border-t-indigo-400 rounded-full animate-spin" />
+                <span>Loading...</span>
+              </div>
+            </div>
+          </div>
         </div>
-      </section>
+      }>
+        <SelfHostedExpandableSection />
+      </Suspense>
 
       {/* CTA Section */}
       <section className="relative z-10 py-32">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="glass rounded-3xl p-12 glow">
-            <h2 className="text-4xl md:text-5xl font-bold mb-6">
-              Ready to <span className="gradient-text">Level Up</span>?
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="glass rounded-3xl p-12 inner-glow relative overflow-hidden"
+          >
+            <BorderBeam size={250} duration={12} delay={9} />
+            <div className="relative z-10 w-16 h-16 mx-auto mb-6">
+              <LogoIcon className="w-full h-full" />
+            </div>
+            <h2 className="text-3xl md:text-4xl font-semibold text-white mb-4">
+              Ready to elevate your community?
             </h2>
-            <p className="text-xl text-slate-400 mb-10">
-              Join thousands of servers already using Clout to power their communities.
+            <p className="text-zinc-400 mb-8 max-w-lg mx-auto">
+              Join communities using Clout to build engagement,
+              reward participation, and create lasting connections.
             </p>
-            <Link 
-              href={discordLoginUrl}
-              className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold text-lg hover:opacity-90 transition-all hover:scale-105"
-            >
-              <Users className="w-5 h-5" />
-              Get Started Free
-            </Link>
-          </div>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Link href={discordLoginUrl}>
+                <InteractiveHoverButton>
+                  Get Started Free
+                </InteractiveHoverButton>
+              </Link>
+              <a
+                href="https://github.com"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="border-zinc-700 text-zinc-300 hover:bg-white/[0.03] px-8 h-12 text-base bg-transparent"
+                >
+                  View on GitHub
+                </Button>
+              </a>
+            </div>
+          </motion.div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="relative z-10 py-12 border-t border-white/10">
+      <footer className="relative z-10 py-12 border-t border-white/[0.05]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-                <Sparkles className="w-4 h-4 text-white" />
+              <div className="w-8 h-8">
+                <LogoIcon className="w-full h-full" />
               </div>
-              <span className="text-lg font-bold gradient-text">Clout</span>
+              <span className="text-lg font-semibold text-white">Clout</span>
             </div>
-            
-            <p className="text-slate-500">© 2025 Clout Bot. All rights reserved.</p>
-            
+
+            <p className="text-zinc-500 text-sm">
+              Self-hosted Discord bot with premium features
+            </p>
+
             <div className="flex items-center gap-6">
-              <a href="#" className="text-slate-400 hover:text-white transition-colors">Privacy</a>
-              <a href="#" className="text-slate-400 hover:text-white transition-colors">Terms</a>
-              <a href="#" className="text-slate-400 hover:text-white transition-colors">Support</a>
+              <a
+                href="#"
+                className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
+              >
+                Privacy
+              </a>
+              <a
+                href="#"
+                className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
+              >
+                Terms
+              </a>
+              <a
+                href="#"
+                className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
+              >
+                Support
+              </a>
             </div>
           </div>
         </div>
       </footer>
-    </main>
+
+      {/* Toast notifications */}
+      <Toaster
+        position="bottom-right"
+        toastOptions={{
+          style: {
+            background: "rgba(10, 10, 11, 0.95)",
+            border: "1px solid rgba(255, 255, 255, 0.08)",
+            color: "#fafafa",
+          },
+        }}
+      />
+    </div>
   );
 }
