@@ -29,5 +29,8 @@
     "undici": "6.23.0",
     "@eslint/plugin-kit": "0.3.5"
   },
-  "packageManager": "npm@10.2.3"
+  "packageManager": "npm@10.2.3",
+  "engines": {
+    "node": ">=20.9.0"
+  }
 }
