@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:gh-pages": "next build -c next.config.gh-pages.js",
     "start": "next start",
     "lint": "next lint"
   },

@@ -1,0 +1,57 @@
+name: Deploy frontend to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npm run db:generate
+
+      - name: Build for GitHub Pages
+        env:
+          NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL || 'https://your-api-url.com' }}
+          NEXT_PUBLIC_DISCORD_CLIENT_ID: ${{ vars.NEXT_PUBLIC_DISCORD_CLIENT_ID || '' }}
+          NEXT_PUBLIC_WS_URL: ${{ vars.NEXT_PUBLIC_WS_URL || 'wss://your-api-url.com/ws' }}
+          NEXT_PUBLIC_DISCORD_REDIRECT_URI: ${{ vars.NEXT_PUBLIC_DISCORD_REDIRECT_URI }}
+        run: npm run build:gh-pages --workspace=clout-web
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@3
+        with:
+          path: apps/web/out
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@4

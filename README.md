@@ -53,6 +53,20 @@ docker compose up -d --build
 
 See [DOCKER.md](DOCKER.md) for schema push, env vars, and port conflicts.
 
+## GitHub Pages (frontend)
+
+The frontend can be deployed as a static site to GitHub Pages. Pushes to `main` trigger a build and deploy.
+
+1. **Enable Pages:** Repo **Settings → Pages → Build and deployment → Source** = **GitHub Actions**.
+2. **Set build env (optional):** **Settings → Secrets and variables → Actions → Variables.** Add:
+   - `NEXT_PUBLIC_API_URL` — your API base URL (e.g. `https://your-api.com`).
+   - `NEXT_PUBLIC_DISCORD_CLIENT_ID` — Discord app client ID.
+   - `NEXT_PUBLIC_WS_URL` — WebSocket URL (e.g. `wss://your-api.com/ws`).
+   - `NEXT_PUBLIC_DISCORD_REDIRECT_URI` — OAuth callback (e.g. `https://<user>.github.io/clout/auth/callback`).
+3. In your Discord app, set the OAuth2 redirect to `https://<your-github-username>.github.io/clout/auth/callback`.
+
+Site URL: **https://\<username\>.github.io/clout/**
+
 ## Project layout
 
 ```
