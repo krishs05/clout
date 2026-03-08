@@ -1,7 +1,8 @@
 import { Router, Request, Response } from 'express';
 import fetch from 'node-fetch';
-import { asyncHandler, AppError } from '../middleware/errorHandler';
-import { generateToken } from '../middleware/auth';
+import jwt from 'jsonwebtoken';
+import { asyncHandler, AppError } from '../middleware/errorHandler.js';
+import { generateToken } from '../middleware/auth.js';
 import { prisma } from '@clout/database';
 import { DISCORD_API_BASE, DISCORD_SCOPES } from '@clout/shared';
 
@@ -138,12 +139,8 @@ router.get('/me', asyncHandler(async (req: Request, res: Response) => {
   }
 
   const token = authHeader.substring(7);
-  const { prisma } = await import('@clout/database');
-  
-  // Verify and decode JWT (simplified - use proper verification in production)
-  const jwt = require('jsonwebtoken');
   const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
-  
+
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as { discordId: string };
     const user = await prisma.user.findUnique({

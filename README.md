@@ -21,7 +21,7 @@ Clout is a full-stack Discord bot with a web dashboard: good/bad deeds, coins, m
 | Area | Highlights |
 |------|------------|
 | **Bot** | `/good` / `/bad` deeds, karma levels, `/daily`, `/balance`, `/pay`, `/leaderboard`, trivia, RPS, guess, custom slash commands, moderation (warn/kick/ban), music queue |
-| **Dashboard** | Discord OAuth, start/stop/restart bot, server list &amp; settings, embed editor, commands &amp; analytics |
+| **Dashboard** | Discord OAuth, start/stop/restart bot, **connected servers** (synced with bot guilds), server settings, embed editor, send embeds, commands, **live analytics** (DB + refresh), **admin** (mod log, bot settings, leave server, reset moderation) |
 | **Stack** | Next.js 16, Express, PostgreSQL (Prisma), Discord.js v14, WebSocket, Docker |
 
 ## Quick Start
@@ -39,7 +39,7 @@ npm run dev
 
 - **Web:** http://localhost:3000  
 - **API:** http://localhost:3001  
-- **Bot:** run `npm run deploy-commands` once from `apps/bot`, then the bot process stays up via `npm run dev`.
+- **Bot:** run `npm run deploy-commands` once from `apps/bot`, then the bot process stays up via `npm run dev`. Connected servers in the dashboard sync with guilds the bot is in (even if the bot joined before the app was running).
 
 ## Docker
 
@@ -93,7 +93,7 @@ clout/
 
 ## Bot commands (summary)
 
-`/good`, `/bad`, `/profile`, `/daily`, `/balance`, `/pay`, `/leaderboard`, `/trivia`, `/rps`, `/guess`, `/command create|delete|list`, `/help`, plus moderation and music.
+`/good`, `/bad`, `/profile`, `/daily`, `/balance`, `/pay`, `/leaderboard`, `/trivia`, `/rps`, `/guess`, `/command create|delete|list`, `/help`, plus moderation (`/warn`, `/kick`, `/ban`) and music. Moderation actions are logged and visible in the dashboard Admin panel.
 
 ## License
 

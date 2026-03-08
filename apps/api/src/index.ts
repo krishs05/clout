@@ -6,12 +6,12 @@ import rateLimit from 'express-rate-limit';
 import { createServer } from 'http';
 import { WebSocketServer } from 'ws';
 
-import { errorHandler } from './middleware/errorHandler';
-import { authRouter } from './routes/auth';
-import { botRouter } from './routes/bot';
-import { serversRouter } from './routes/servers';
-import { usersRouter } from './routes/users';
-import { setupWebSocket } from './websocket';
+import { errorHandler } from './middleware/errorHandler.js';
+import { authRouter } from './routes/auth.js';
+import { botRouter } from './routes/bot.js';
+import { serversRouter } from './routes/servers.js';
+import { usersRouter } from './routes/users.js';
+import { setupWebSocket } from './websocket.js';
 
 const app = express();
 const server = createServer(app);
@@ -26,10 +26,10 @@ app.use(cors({
   credentials: true,
 }));
 
-// Rate limiting
+// Rate limiting: higher limit so dashboard (status polling, bot control, embeds) doesn't hit 429
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  max: 500, // per IP; dashboard + WebSocket + bot control can use many requests
   standardHeaders: true,
   legacyHeaders: false,
 });

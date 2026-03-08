@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
-import { authenticate, AuthRequest } from '../middleware/auth';
-import { asyncHandler, AppError } from '../middleware/errorHandler';
+import { authenticate, AuthRequest } from '../middleware/auth.js';
+import { asyncHandler, AppError } from '../middleware/errorHandler.js';
 import { prisma } from '@clout/database';
 
 const router = Router();

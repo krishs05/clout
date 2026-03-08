@@ -204,8 +204,11 @@ export function DashboardClient() {
       });
 
       if (!res.ok) {
+        if (res.status === 429) {
+          throw new Error("Too many requests. Please try again in a few minutes.");
+        }
         const err = await res.json().catch(() => ({}));
-        throw new Error(err?.message || `Failed to ${action} bot`);
+        throw new Error(err?.error ?? err?.message ?? `Failed to ${action} bot`);
       }
 
       if (action === "stop") {
@@ -282,8 +285,16 @@ export function DashboardClient() {
               token={token}
             />
           ) : null}
-          {activeTab === "analytics" ? <AnalyticsSection /> : null}
-          {activeTab === "admin" ? <AdminSection /> : null}
+          {activeTab === "analytics" ? (
+            <AnalyticsSection token={token} onRefresh={fetchBotStatus.bind(null, token || "")} />
+          ) : null}
+          {activeTab === "admin" ? (
+            <AdminSection
+              token={token}
+              servers={Array.isArray(servers) ? servers.map((s: any) => ({ id: s.id, discordId: s.discordId, name: s.name })) : []}
+              onServersRefresh={() => token && fetchServers(token)}
+            />
+          ) : null}
         </motion.div>
       </AnimatePresence>
     </DashboardShell>

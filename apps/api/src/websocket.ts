@@ -1,6 +1,6 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import { prisma } from '@clout/database';
-import { getBotState } from './routes/bot';
+import { getBotState } from './routes/bot.js';
 
 interface ExtendedWebSocket extends WebSocket {
   isAlive: boolean;

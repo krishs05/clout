@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
 import { prisma } from '@clout/database';
-import { createEmbed } from '../utils/embed';
+import { createEmbed } from '../utils/embed.js';
 
 const choices = ['rock', 'paper', 'scissors'] as const;
 const emojis: Record<string, string> = {

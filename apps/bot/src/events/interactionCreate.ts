@@ -1,6 +1,6 @@
 import { Events, ChatInputCommandInteraction, Collection } from 'discord.js';
-import { CloutClient } from '../index';
-import { getControl } from '../utils/control';
+import { CloutClient } from '../index.js';
+import { getControl } from '../utils/control.js';
 
 const COOLDOWN_SECONDS = 3;
 

@@ -1,7 +1,7 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, GuildMember, EmbedBuilder } from 'discord.js';
 import { joinVoiceChannel } from '@discordjs/voice';
 import play from 'play-dl';
-import { queues, GuildQueue } from '../utils/music';
+import { queues, GuildQueue } from '../utils/music.js';
 
 export const data = new SlashCommandBuilder()
     .setName('play')

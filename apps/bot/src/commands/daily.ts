@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
 import { prisma } from '@clout/database';
-import { createEmbed } from '../utils/embed';
+import { createEmbed } from '../utils/embed.js';
 
 const DAILY_REWARD = 100;
 const COOLDOWN_HOURS = 24;

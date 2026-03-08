@@ -1,9 +1,9 @@
 import { Router, Request, Response } from 'express';
 import fetch from 'node-fetch';
-import { authenticate, AuthRequest } from '../middleware/auth';
-import { asyncHandler, AppError } from '../middleware/errorHandler';
+import { authenticate, AuthRequest } from '../middleware/auth.js';
+import { asyncHandler, AppError } from '../middleware/errorHandler.js';
 import { prisma } from '@clout/database';
-import { broadcastBotStatus } from '../websocket';
+import { broadcastBotStatus } from '../websocket.js';
 import { DISCORD_API_BASE } from '@clout/shared';
 
 const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
@@ -38,6 +38,48 @@ router.get('/status', asyncHandler(async (_req: Request, res: Response) => {
   res.json({
     success: true,
     data: state,
+  });
+}));
+
+// Get bot settings (prefix, log level) for admin
+router.get('/settings', authenticate, asyncHandler(async (_req: Request, res: Response) => {
+  const prefixRow = await prisma.botState.findUnique({ where: { key: 'prefix' } });
+  const logLevelRow = await prisma.botState.findUnique({ where: { key: 'logLevel' } });
+  res.json({
+    success: true,
+    data: {
+      prefix: prefixRow?.value ? JSON.parse(prefixRow.value) : '!',
+      logLevel: logLevelRow?.value ? JSON.parse(logLevelRow.value) : 'info',
+    },
+  });
+}));
+
+// Update bot settings
+router.patch('/settings', authenticate, asyncHandler(async (req: Request, res: Response) => {
+  const body = req.body as { prefix?: string; logLevel?: string };
+  if (body.prefix !== undefined) {
+    await prisma.botState.upsert({
+      where: { key: 'prefix' },
+      update: { value: JSON.stringify(body.prefix.slice(0, 5)) },
+      create: { key: 'prefix', value: JSON.stringify(body.prefix.slice(0, 5)) },
+    });
+  }
+  if (body.logLevel !== undefined) {
+    const level = ['debug', 'info', 'warn', 'error'].includes(body.logLevel) ? body.logLevel : 'info';
+    await prisma.botState.upsert({
+      where: { key: 'logLevel' },
+      update: { value: JSON.stringify(level) },
+      create: { key: 'logLevel', value: JSON.stringify(level) },
+    });
+  }
+  const prefixRow = await prisma.botState.findUnique({ where: { key: 'prefix' } });
+  const logLevelRow = await prisma.botState.findUnique({ where: { key: 'logLevel' } });
+  res.json({
+    success: true,
+    data: {
+      prefix: prefixRow?.value ? JSON.parse(prefixRow.value) : '!',
+      logLevel: logLevelRow?.value ? JSON.parse(logLevelRow.value) : 'info',
+    },
   });
 }));
 
@@ -185,25 +227,32 @@ router.get('/stats', asyncHandler(async (_req: Request, res: Response) => {
   });
 }));
 
-// Historical stats
+// Historical stats (last 7 days from DB: new users and transactions per day)
 router.get('/stats/historical', asyncHandler(async (_req: Request, res: Response) => {
-  // Let's generate a 7-day history based on actual user growth and transaction growth
-  // Since we might not have enough historical data in DB during dev, we can extrapolate backward from current count
-  const totalUsers = await prisma.user.count();
-  const totalTransactions = await prisma.transaction.count();
-
-  const history = [];
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const history: { name: string; users: number; commands: number; good: number; bad: number; coins: number }[] = [];
   const today = new Date();
 
   for (let i = 6; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(today.getDate() - i);
-    // Simple mock extrapolation based on actual count
+    const dayStart = new Date(d);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(d);
+    dayEnd.setHours(23, 59, 59, 999);
+
+    const [newUsers, transactionsByDay] = await Promise.all([
+      prisma.user.count({ where: { createdAt: { gte: dayStart, lte: dayEnd } } }),
+      prisma.transaction.count({ where: { createdAt: { gte: dayStart, lte: dayEnd } } }),
+    ]);
+
     history.push({
       name: days[d.getDay()],
-      users: Math.max(0, totalUsers - (i * Math.floor(totalUsers / 10))),
-      commands: Math.max(0, totalTransactions - (i * Math.floor(totalTransactions / 8))),
+      users: newUsers,
+      commands: transactionsByDay,
+      good: 0,
+      bad: 0,
+      coins: 0,
     });
   }
 
@@ -213,13 +262,69 @@ router.get('/stats/historical', asyncHandler(async (_req: Request, res: Response
   });
 }));
 
-// Send custom embed (stub: implement via bot client when needed)
+// Top commands (by transaction reason / type for economy; placeholder counts for others)
+router.get('/stats/top-commands', asyncHandler(async (_req: Request, res: Response) => {
+  const transactions = await prisma.transaction.groupBy({
+    by: ['type'],
+    _count: { id: true },
+  });
+  const sorted = transactions.sort((a, b) => b._count.id - a._count.id).slice(0, 10);
+  const typeLabels: Record<string, string> = {
+    DAILY: '/daily',
+    TRANSFER_IN: '/pay (in)',
+    TRANSFER_OUT: '/pay (out)',
+    GAME_WIN: 'Games',
+    GAME_LOSS: 'Games',
+    SHOP_PURCHASE: 'Shop',
+    ADMIN_GRANT: 'Admin',
+    ADMIN_DEDUCT: 'Admin',
+  };
+  const colors = ['#6366f1', '#8b5cf6', '#10b981', '#f59e0b', '#0ea5e9'];
+  res.json({
+    success: true,
+    data: sorted.map((t, i) => ({
+      name: typeLabels[t.type] ?? t.type,
+      count: t._count.id,
+      fill: colors[i % colors.length],
+    })),
+  });
+}));
+
+// Send custom embed via Discord REST API (bot must have access to the channel)
 router.post('/send-embed', authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
-  const body = req.body as { channelId?: string; embed?: Record<string, unknown> };
+  const body = req.body as { channelId?: string; embed?: { title?: string; description?: string; color?: string; footer?: string } };
   if (!body?.channelId || !body?.embed) {
     throw new AppError(400, 'channelId and embed are required');
   }
-  throw new AppError(501, 'Send-embed API not configured. Wire the bot to post embeds to the given channel.');
+  if (!DISCORD_BOT_TOKEN) {
+    throw new AppError(503, 'Discord bot not configured');
+  }
+  const { channelId, embed } = body;
+  const colorHex = typeof embed.color === 'string' ? embed.color.replace(/^#/, '') : undefined;
+  const discordEmbed: { title?: string; description?: string; color?: number; footer?: { text: string } } = {};
+  if (embed.title) discordEmbed.title = embed.title.slice(0, 256);
+  if (embed.description) discordEmbed.description = embed.description.slice(0, 4096);
+  if (colorHex) discordEmbed.color = parseInt(colorHex, 16);
+  if (embed.footer) discordEmbed.footer = { text: embed.footer.slice(0, 2048) };
+  if (!discordEmbed.title && !discordEmbed.description) {
+    throw new AppError(400, 'embed must have at least title or description');
+  }
+  const response = await fetch(`${DISCORD_API_BASE}/channels/${channelId}/messages`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
+    },
+    body: JSON.stringify({ embeds: [discordEmbed] }),
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    if (response.status === 403) throw new AppError(403, 'Bot cannot send messages to this channel');
+    if (response.status === 404) throw new AppError(404, 'Channel not found');
+    throw new AppError(response.status >= 500 ? 502 : 400, `Discord API: ${text || response.statusText}`);
+  }
+  const data = (await response.json()) as { id: string };
+  res.json({ success: true, data: { messageId: data.id } });
 }));
 
 // List commands from Discord API (live)

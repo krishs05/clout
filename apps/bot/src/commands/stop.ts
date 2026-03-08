@@ -1,5 +1,5 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
-import { queues } from '../utils/music';
+import { queues } from '../utils/music.js';
 
 export const data = new SlashCommandBuilder()
     .setName('stop')

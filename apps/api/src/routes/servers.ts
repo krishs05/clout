@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
 import fetch from 'node-fetch';
-import { authenticate, AuthRequest } from '../middleware/auth';
-import { asyncHandler, AppError } from '../middleware/errorHandler';
+import { authenticate, AuthRequest } from '../middleware/auth.js';
+import { asyncHandler, AppError } from '../middleware/errorHandler.js';
 import { prisma, Prisma } from '@clout/database';
 import { z } from 'zod';
 import { DISCORD_API_BASE } from '@clout/shared';
@@ -50,7 +50,7 @@ const customCommandSchema = z.object({
   response: z.string().min(1).max(2000),
 });
 
-// Get user's servers
+// Get user's servers (syncs with bot's guilds so servers where the bot is in appear even if guildCreate didn't run)
 router.get('/', authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
   const userId = req.user!.id;
 
@@ -58,27 +58,65 @@ router.get('/', authenticate, asyncHandler(async (req: AuthRequest, res: Respons
     where: { id: userId },
   });
   const rawCache = user && 'guildsCache' in user ? (user as { guildsCache?: unknown }).guildsCache : undefined;
-  const guildIds = Array.isArray(rawCache)
-    ? (rawCache as { id?: string }[]).map(g => g?.id).filter(Boolean) as string[]
-    : [];
+  const userGuilds = Array.isArray(rawCache) ? (rawCache as { id?: string; permissions?: number }[]) : [];
+  const guildIds = userGuilds.map((g) => g?.id).filter(Boolean) as string[];
 
-  if (guildIds.length > 0) {
-    const serversInUserGuilds = await prisma.server.findMany({
-      where: { discordId: { in: guildIds } },
-      select: { id: true },
-    });
-    for (const server of serversInUserGuilds) {
+  let botGuildIds: string[] = [];
+  try {
+    const botGuildsRow = await prisma.botState.findUnique({ where: { key: 'guildIds' } });
+    if (botGuildsRow?.value) botGuildIds = JSON.parse(botGuildsRow.value) as string[];
+  } catch {
+    // ignore
+  }
+
+  const botGuildSet = new Set(botGuildIds);
+  const syncGuildIds = guildIds.filter((id) => botGuildSet.has(id));
+
+  for (const guildId of syncGuildIds) {
+    let server = await prisma.server.findUnique({ where: { discordId: guildId } });
+    if (!server && DISCORD_BOT_TOKEN) {
+      try {
+        const guildRes = await fetch(`${DISCORD_API_BASE}/guilds/${guildId}`, {
+          headers: { Authorization: `Bot ${DISCORD_BOT_TOKEN}` },
+        });
+        if (guildRes.ok) {
+          const guild = (await guildRes.json()) as { id: string; name: string; icon: string | null; owner_id: string };
+          server = await prisma.server.create({
+            data: {
+              discordId: guild.id,
+              name: guild.name,
+              icon: guild.icon ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png` : null,
+              ownerId: guild.owner_id,
+            },
+          });
+        }
+      } catch {
+        // skip this guild
+      }
+    }
+    if (server) {
       await prisma.serverMember.upsert({
-        where: {
-          serverId_userId: { serverId: server.id, userId },
-        },
+        where: { serverId_userId: { serverId: server.id, userId } },
         update: {},
         create: { serverId: server.id, userId },
       });
     }
   }
 
-  // Get servers where user is a member
+  if (guildIds.length > 0 && syncGuildIds.length === 0) {
+    const serversInUserGuilds = await prisma.server.findMany({
+      where: { discordId: { in: guildIds } },
+      select: { id: true },
+    });
+    for (const server of serversInUserGuilds) {
+      await prisma.serverMember.upsert({
+        where: { serverId_userId: { serverId: server.id, userId } },
+        update: {},
+        create: { serverId: server.id, userId },
+      });
+    }
+  }
+
   const memberships = await prisma.serverMember.findMany({
     where: { userId },
     include: {
@@ -93,9 +131,42 @@ router.get('/', authenticate, asyncHandler(async (req: AuthRequest, res: Respons
 
   res.json({
     success: true,
-    data: memberships.map(m => ({
+    data: memberships.map((m) => ({
       ...m.server,
       memberSince: m.joinedAt,
+    })),
+  });
+}));
+
+// Get moderation events across all of the user's servers (for admin panel)
+router.get('/moderation/events', authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
+  const userId = req.user!.id;
+  const memberships = await prisma.serverMember.findMany({
+    where: { userId },
+    select: { serverId: true },
+  });
+  const serverIds = memberships.map((m) => m.serverId);
+  if (serverIds.length === 0) {
+    res.json({ success: true, data: [] });
+    return;
+  }
+  const events = await (prisma as any).moderationEvent.findMany({
+    where: { serverId: { in: serverIds } },
+    orderBy: { createdAt: 'desc' },
+    take: 100,
+  });
+  const serverIdList = [...new Set((events as { serverId: string }[]).map((e) => e.serverId))];
+  const servers = await prisma.server.findMany({
+    where: { id: { in: serverIdList } },
+    select: { id: true, name: true, discordId: true },
+  });
+  const serverMap = new Map(servers.map((s) => [s.id, s]));
+  res.json({
+    success: true,
+    data: (events as { serverId: string; id: string; action: string; targetUsername: string; moderatorUsername: string; reason: string | null; createdAt: Date }[]).map((e) => ({
+      ...e,
+      serverName: serverMap.get(e.serverId)?.name ?? 'Unknown',
+      serverDiscordId: serverMap.get(e.serverId)?.discordId,
     })),
   });
 }));
@@ -175,6 +246,45 @@ router.get('/:id/moderation/events', authenticate, asyncHandler(async (req: Auth
   });
 
   res.json({ success: true, data: events });
+}));
+
+// Bot leaves a guild (Discord API); removes server from DB so it no longer appears as connected
+router.post('/:id/leave', authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { id: guildId } = req.params;
+  const userId = req.user!.id;
+  const server = await prisma.server.findUnique({ where: { discordId: guildId } });
+  if (!server) throw new AppError(404, 'Server not found');
+  const member = await prisma.serverMember.findUnique({
+    where: { serverId_userId: { serverId: server.id, userId } },
+  });
+  if (!member) throw new AppError(403, 'You do not have access to this server in the dashboard');
+  if (!DISCORD_BOT_TOKEN) throw new AppError(503, 'Bot not configured');
+  const response = await fetch(`${DISCORD_API_BASE}/users/@me/guilds/${guildId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bot ${DISCORD_BOT_TOKEN}` },
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    if (response.status === 403) throw new AppError(403, 'Bot cannot leave this guild');
+    if (response.status === 404) throw new AppError(404, 'Guild not found');
+    throw new AppError(502, `Discord API: ${text || response.statusText}`);
+  }
+  await prisma.server.delete({ where: { id: server.id } });
+  res.json({ success: true, message: 'Bot has left the server' });
+}));
+
+// Reset moderation data for a server (deletes all moderation events)
+router.post('/:id/moderation/reset', authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+  const userId = req.user!.id;
+  const server = await prisma.server.findUnique({ where: { discordId: id } });
+  if (!server) throw new AppError(404, 'Server not found');
+  const member = await prisma.serverMember.findUnique({
+    where: { serverId_userId: { serverId: server.id, userId } },
+  });
+  if (!member) throw new AppError(403, 'You do not have access to this server');
+  await (prisma as any).moderationEvent.deleteMany({ where: { serverId: server.id } });
+  res.json({ success: true, message: 'Moderation data reset' });
 }));
 
 // Get Discord guild roles (live from Discord API)

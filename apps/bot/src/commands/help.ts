@@ -1,5 +1,5 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
-import { createEmbed } from '../utils/embed';
+import { createEmbed } from '../utils/embed.js';
 
 export const data = new SlashCommandBuilder()
   .setName('help')

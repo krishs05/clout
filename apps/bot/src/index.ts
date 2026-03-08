@@ -3,7 +3,10 @@ import { Client, GatewayIntentBits, Collection, Events } from 'discord.js';
 import { prisma } from '@clout/database';
 import path from 'path';
 import fs from 'fs';
-import { getControl } from './utils/control';
+import { fileURLToPath } from 'url';
+import { getControl } from './utils/control.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Extend Client to include commands
 export interface CloutClient extends Client {
@@ -25,29 +28,35 @@ const client = new Client({
 client.commands = new Collection();
 client.cooldowns = new Collection();
 
-// Load commands
-const commandsPath = path.join(__dirname, 'commands');
-const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.ts') || file.endsWith('.js'));
-
-for (const file of commandFiles) {
-  const filePath = path.join(commandsPath, file);
-  const command = require(filePath);
-  if ('data' in command && 'execute' in command) {
-    client.commands.set(command.data.name, command);
+async function loadCommands() {
+  const commandsPath = path.join(__dirname, 'commands');
+  const isDist = __dirname.includes('dist');
+  const ext = isDist ? '.js' : '.ts';
+  const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith(ext) && !file.endsWith('.d.ts'));
+  for (const file of commandFiles) {
+    const specifier = `./commands/${file}`;
+    const module = await import(specifier);
+    const command = module.default ?? module;
+    if (command && 'data' in command && 'execute' in command) {
+      client.commands.set(command.data.name, command);
+    }
   }
 }
 
-// Load events
-const eventsPath = path.join(__dirname, 'events');
-const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.ts') || file.endsWith('.js'));
-
-for (const file of eventFiles) {
-  const filePath = path.join(eventsPath, file);
-  const event = require(filePath);
-  if (event.once) {
-    client.once(event.name, (...args) => event.execute(...args));
-  } else {
-    client.on(event.name, (...args) => event.execute(...args));
+async function loadEvents() {
+  const eventsPath = path.join(__dirname, 'events');
+  const isDist = __dirname.includes('dist');
+  const ext = isDist ? '.js' : '.ts';
+  const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith(ext) && !file.endsWith('.d.ts'));
+  for (const file of eventFiles) {
+    const specifier = `./events/${file}`;
+    const module = await import(specifier);
+    const event = module.default ?? module;
+    if (event?.once) {
+      client.once(event.name, (...args: unknown[]) => event.execute(...args));
+    } else if (event?.name) {
+      client.on(event.name, (...args: unknown[]) => event.execute(...args));
+    }
   }
 }
 
@@ -80,6 +89,7 @@ async function updateBotState() {
     return;
   }
 
+  const guildIds = client.guilds.cache.map((g) => g.id);
   const state = {
     online: true,
     uptime: client.readyTimestamp || Date.now(),
@@ -96,6 +106,11 @@ async function updateBotState() {
       update: { value: JSON.stringify(state) },
       create: { key: 'status', value: JSON.stringify(state) },
     });
+    await prisma.botState.upsert({
+      where: { key: 'guildIds' },
+      update: { value: JSON.stringify(guildIds) },
+      create: { key: 'guildIds', value: JSON.stringify(guildIds) },
+    });
   } catch (error) {
     console.error('Failed to update bot state in database:', error);
   }
@@ -103,6 +118,8 @@ async function updateBotState() {
 
 async function main() {
   try {
+    await loadCommands();
+    await loadEvents();
     await prisma.$connect();
     console.log('✅ Connected to database');
 
