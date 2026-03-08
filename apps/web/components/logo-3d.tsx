@@ -340,8 +340,8 @@ export function LogoIcon({
     >
       <defs>
         <linearGradient id={gradientId} x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#6366f1" />
-          <stop offset="100%" stopColor="#8b5cf6" />
+          <stop offset="0%" stopColor="#808CF8" />
+          <stop offset="100%" stopColor="#808CF8" />
         </linearGradient>
       </defs>
       <ellipse
@@ -349,7 +349,7 @@ export function LogoIcon({
         cy="40"
         rx="14"
         ry="2"
-        fill="#8b5cf6"
+        fill="#808CF8"
         opacity="0.15"
       />
       <path
