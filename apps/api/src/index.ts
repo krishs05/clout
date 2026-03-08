@@ -14,6 +14,7 @@ import { usersRouter } from './routes/users.js';
 import { setupWebSocket } from './websocket.js';
 
 const app = express();
+app.set('trust proxy', 1); // Trust first proxy (required for Railway + express-rate-limit)
 const server = createServer(app);
 const wss = new WebSocketServer({ server, path: '/ws' });
 
